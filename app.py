@@ -47,9 +47,9 @@ for i in range(1, meses_proyeccion):
     nueva_venta = proy_ventas[-1] * (1 + crecimiento_pct / 100)
     proy_ventas.append(nueva_venta)
     proy_ingresos.append(nueva_venta * precio)
-    proy_cpa.append(cpa)  # se mantiene constante, puedes ajustar si deseas
+    proy_cpa.append(cpa)
 
-# Bandas de incertidumbre (+/- 10%)
+# Bandas de incertidumbre (+/-10%)
 ingresos_min = [x*0.9 for x in proy_ingresos]
 ingresos_max = [x*1.1 for x in proy_ingresos]
 
@@ -73,21 +73,15 @@ col6.metric("Drop-off Rate", f"{drop_off:.2f}%")
 # -----------------------------
 st.subheader("📈 Proyección Profesional de KPIs")
 fig = go.Figure()
-
-# Curvas suavizadas usando spline
 fig.add_trace(go.Scatter(x=meses, y=proy_ingresos, mode='lines+markers', name='Ingresos Esperados', line=dict(color='green', width=3)))
 fig.add_trace(go.Scatter(x=meses, y=proy_ventas, mode='lines+markers', name='Ventas Esperadas', line=dict(color='blue', width=3)))
 fig.add_trace(go.Scatter(x=meses, y=proy_cpa, mode='lines+markers', name='CPA', line=dict(color='red', width=3, dash='dash')))
-
-# Bandas de incertidumbre
 fig.add_trace(go.Scatter(x=meses, y=ingresos_max, mode='lines', line=dict(width=0), showlegend=False))
 fig.add_trace(go.Scatter(x=meses, y=ingresos_min, mode='lines', fill='tonexty', fillcolor='rgba(0,255,0,0.2)', line=dict(width=0), name='Rango Ingresos'))
-
 fig.update_layout(title='Proyección de KPIs con Curvas Suavizadas y Rango de Incertidumbre',
                   xaxis_title='Mes',
                   yaxis_title='Valor',
                   legend=dict(x=0, y=1.1, orientation='h'))
-
 st.plotly_chart(fig)
 
 # -----------------------------
@@ -95,24 +89,47 @@ st.plotly_chart(fig)
 # -----------------------------
 st.subheader("ℹ️ Explicación de Fórmulas")
 st.write("""
-- **Tasa de Conversión**: Porcentaje de visitantes que compran `(Ventas / Visitas) * 100`
-- **CPA**: Costo por adquisición `Gasto en Ads / Ventas`
-- **ROAS**: Retorno sobre gasto en publicidad `Ingresos / Gasto en Ads`
-- **Ventas Necesarias**: Para cubrir costos fijos `Costos Fijos / (Precio - Costos Variables)`
-- **LTV**: Valor total de un cliente `Precio * Frecuencia de Compra`
-- **Drop-off Rate**: Porcentaje de visitantes que no compran `((Visitas - Ventas) / Visitas) * 100`
-- **Proyección de Ingresos y Ventas**: Se calcula mes a mes según crecimiento porcentual definido
+- **Tasa de Conversión**: `(Ventas / Visitas) * 100`
+- **CPA**: `Gasto en Ads / Ventas`
+- **ROAS**: `Ingresos / Gasto en Ads`
+- **Ventas Necesarias**: `Costos Fijos / (Precio - Costos Variables)`
+- **LTV**: `Precio * Frecuencia de Compra`
+- **Drop-off Rate**: `((Visitas - Ventas) / Visitas) * 100`
+- **Proyección de Ingresos y Ventas**: calculada mes a mes según crecimiento porcentual
 """)
 
 # -----------------------------
-# Chat AI Gratuito
+# Chat AI con contexto
 # -----------------------------
-st.subheader("💬 Pregunta a la AI sobre tus KPIs (Gratis)")
+st.subheader("💬 Pregunta a la AI sobre tus KPIs (Gratis, contexto incluido)")
 
 pregunta = st.text_input("Escribe tu pregunta sobre tus KPIs:")
 
 if pregunta:
-    with st.spinner("La AI está respondiendo..."):
-        chat_model = pipeline("text-generation", model="bigscience/bloom-560m")
-        respuesta = chat_model(pregunta, max_length=200, do_sample=True)
+    with st.spinner("La AI está procesando tu pregunta..."):
+        # Modelo ligero compatible con Streamlit Cloud
+        chat_model = pipeline("text-generation", model="EleutherAI/gpt-neo-125M")
+
+        # Preparar prompt con contexto de KPIs
+        contexto = f"""
+        Eres un asistente experto en marketing digital.
+        Estos son los KPIs actuales de un producto digital:
+        Visitas: {visitas}
+        Ventas: {ventas}
+        Gasto en Ads: ${gasto_ads}
+        Precio: ${precio}
+        Costos Fijos: ${costos_fijos}
+        Costos Variables: ${costos_variables}
+        Frecuencia de Compra (LTV): {frecuencia_compra}
+        Tasa de Conversión: {tasa_conversion:.2f}%
+        CPA: ${cpa:.2f}
+        ROAS: {roas:.2f}x
+        Ventas Necesarias: {ventas_necesarias:.0f}
+        LTV: ${ltv:.2f}
+        Drop-off Rate: {drop_off:.2f}%
+        Proyección de ingresos y ventas para {meses_proyeccion} meses con {crecimiento_pct}% de crecimiento mensual.
+        """
+
+        prompt = contexto + "\nUsuario pregunta: " + pregunta + "\nRespuesta experta:"
+        respuesta = chat_model(prompt, max_length=250, do_sample=True)
         st.write(respuesta[0]['generated_text'])
