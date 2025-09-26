@@ -1,13 +1,17 @@
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
-from transformers import pipeline
+import requests
 
-# Configuración de la página
-st.set_page_config(page_title="Dashboard Profesional Avanzado de KPIs", layout="wide")
-st.title("📊 Dashboard Profesional de KPIs con Proyecciones y AI Gratuito")
+# -----------------------------
+# Configuración de página
+# -----------------------------
+st.set_page_config(page_title="Dashboard Profesional KPIs", layout="wide")
+st.title("📊 Dashboard Profesional de KPIs con Proyecciones y Chat AI")
 
+# -----------------------------
 # Barra lateral: Inputs
+# -----------------------------
 st.sidebar.header("Parámetros de Entrada")
 visitas = st.sidebar.number_input("Número de visitas actuales", min_value=1, value=10000)
 ventas = st.sidebar.number_input("Número de ventas actuales", min_value=0, value=100)
@@ -19,7 +23,9 @@ frecuencia_compra = st.sidebar.number_input("Compras promedio por cliente (LTV)"
 meses_proyeccion = st.sidebar.number_input("Meses a proyectar", min_value=1, value=6)
 crecimiento_pct = st.sidebar.slider("Crecimiento mensual estimado (%)", 0, 100, 10)
 
+# -----------------------------
 # Cálculo de KPIs
+# -----------------------------
 tasa_conversion = (ventas / visitas) * 100
 cpa = gasto_ads / ventas if ventas > 0 else 0
 ingresos = ventas * precio
@@ -29,7 +35,9 @@ ventas_necesarias = costos_fijos / margen_unitario if margen_unitario > 0 else 0
 ltv = precio * frecuencia_compra
 drop_off = ((visitas - ventas) / visitas) * 100
 
+# -----------------------------
 # Proyecciones con crecimiento
+# -----------------------------
 meses = np.arange(1, meses_proyeccion + 1)
 proy_ventas = [ventas]
 proy_ingresos = [ingresos]
@@ -45,7 +53,9 @@ for i in range(1, meses_proyeccion):
 ingresos_min = [x*0.9 for x in proy_ingresos]
 ingresos_max = [x*1.1 for x in proy_ingresos]
 
+# -----------------------------
 # Mostrar KPIs principales
+# -----------------------------
 st.subheader("📈 KPIs Clave")
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Tasa de Conversión", f"{tasa_conversion:.2f}%")
@@ -58,7 +68,9 @@ col5, col6 = st.columns(2)
 col5.metric("Lifetime Value (LTV)", f"${ltv:.2f}")
 col6.metric("Drop-off Rate", f"{drop_off:.2f}%")
 
+# -----------------------------
 # Gráfico profesional de proyección
+# -----------------------------
 st.subheader("📈 Proyección Profesional de KPIs")
 fig = go.Figure()
 fig.add_trace(go.Scatter(x=meses, y=proy_ingresos, mode='lines+markers', name='Ingresos Esperados', line=dict(color='green', width=3)))
@@ -72,7 +84,9 @@ fig.update_layout(title='Proyección de KPIs con Curvas Suavizadas y Rango de In
                   legend=dict(x=0, y=1.1, orientation='h'))
 st.plotly_chart(fig)
 
+# -----------------------------
 # Explicación de KPIs
+# -----------------------------
 st.subheader("ℹ️ Explicación de Fórmulas")
 st.write("""
 - **Tasa de Conversión**: `(Ventas / Visitas) * 100`
@@ -84,35 +98,34 @@ st.write("""
 - **Proyección de Ingresos y Ventas**: calculada mes a mes según crecimiento porcentual
 """)
 
-# Chat AI con contexto
-st.subheader("💬 Pregunta a la AI sobre tus KPIs (Gratis, contexto incluido)")
+# -----------------------------
+# Chat AI con contexto usando Hugging Face Inference API
+# -----------------------------
+st.subheader("💬 Pregunta a la AI sobre tus KPIs (contexto incluido)")
 
 pregunta = st.text_input("Escribe tu pregunta sobre tus KPIs:")
 
 if pregunta:
-    with st.spinner("La AI está procesando tu pregunta..."):
-        # Modelo ligero compatible con Streamlit Cloud
-        chat_model = pipeline("text-generation", model="EleutherAI/gpt-neo-125M")
+    with st.spinner("La AI está respondiendo..."):
+        API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-small"
+        headers = {"Authorization": "Bearer TU_TOKEN_HUGGINGFACE"}  # reemplaza con tu token gratuito
 
-        # Preparar prompt con contexto
         contexto = f"""
-Eres un asistente experto en marketing digital.
-Estos son los KPIs actuales:
-Visitas: {visitas}
-Ventas: {ventas}
-Gasto en Ads: ${gasto_ads}
-Precio: ${precio}
-Costos Fijos: ${costos_fijos}
-Costos Variables: ${costos_variables}
-Frecuencia de Compra (LTV): {frecuencia_compra}
-Tasa de Conversión: {tasa_conversion:.2f}%
-CPA: ${cpa:.2f}
-ROAS: {roas:.2f}x
-Ventas Necesarias: {ventas_necesarias:.0f}
-LTV: ${ltv:.2f}
-Drop-off Rate: {drop_off:.2f}%
-Proyección de ingresos y ventas para {meses_proyeccion} meses con {crecimiento_pct}% de crecimiento mensual.
-"""
-        prompt = contexto + "\nUsuario pregunta: " + pregunta + "\nRespuesta experta:"
-        respuesta = chat_model(prompt, max_length=250, do_sample=True)
-        st.write(respuesta[0]['generated_text'])
+        Visitas: {visitas}
+        Ventas: {ventas}
+        Gasto Ads: {gasto_ads}
+        Precio: {precio}
+        CPA: {cpa:.2f}
+        ROAS: {roas:.2f}x
+        LTV: {ltv:.2f}
+        Drop-off: {drop_off:.2f}%
+        Proyección {meses_proyeccion} meses con {crecimiento_pct}% mensual
+        """
+
+        payload = {
+            "inputs": f"Estos son los KPIs: {contexto}\nUsuario pregunta: {pregunta}\nRespuesta experta:"
+        }
+
+        response = requests.post(API_URL, headers=headers, json=payload)
+        data = response.json()
+        st.write(data[0]['generated_text'])
