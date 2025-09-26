@@ -1,55 +1,118 @@
 import streamlit as st
 import plotly.graph_objects as go
-import pandas as pd
+import numpy as np
+from transformers import pipeline
 
-# Configuración de la página
-st.set_page_config(page_title="Dashboard de KPIs", page_icon="📊", layout="wide")
+# -----------------------------
+# Configuración de página
+# -----------------------------
+st.set_page_config(page_title="Dashboard Profesional Avanzado de KPIs", layout="wide")
+st.title("📊 Dashboard Profesional de KPIs con Proyecciones y AI Gratuito")
 
-# Título de la aplicación
-st.title("📊 Dashboard Profesional de KPIs de Marketing Digital")
-
-# Entrada de datos
+# -----------------------------
+# Barra lateral: Inputs
+# -----------------------------
 st.sidebar.header("Parámetros de Entrada")
-visitas = st.sidebar.number_input("Número de visitas", min_value=1, value=10000)
-ventas = st.sidebar.number_input("Número de ventas", min_value=0, value=100)
+visitas = st.sidebar.number_input("Número de visitas actuales", min_value=1, value=10000)
+ventas = st.sidebar.number_input("Número de ventas actuales", min_value=0, value=100)
 gasto_ads = st.sidebar.number_input("Gasto en publicidad ($)", min_value=0.0, value=500.0)
 precio = st.sidebar.number_input("Precio del producto ($)", min_value=1.0, value=50.0)
-costos_fijos = st.sidebar.number_input("Costos fijos mensuales ($)", min_value=0.0, value=1000.0)
-costos_variables = st.sidebar.number_input("Costos variables por unidad ($)", min_value=0.0, value=10.0)
+costos_fijos = st.sidebar.number_input("Costos fijos ($)", min_value=0.0, value=1000.0)
+costos_variables = st.sidebar.number_input("Costos variables ($)", min_value=0.0, value=10.0)
+frecuencia_compra = st.sidebar.number_input("Compras promedio por cliente (LTV)", min_value=1, value=3)
+meses_proyeccion = st.sidebar.number_input("Meses a proyectar", min_value=1, value=6)
+crecimiento_pct = st.sidebar.slider("Crecimiento mensual estimado (%)", 0, 100, 10)
 
-# Cálculos de KPIs
+# -----------------------------
+# Cálculo de KPIs
+# -----------------------------
 tasa_conversion = (ventas / visitas) * 100
 cpa = gasto_ads / ventas if ventas > 0 else 0
 ingresos = ventas * precio
 roas = ingresos / gasto_ads if gasto_ads > 0 else 0
 margen_unitario = precio - costos_variables
 ventas_necesarias = costos_fijos / margen_unitario if margen_unitario > 0 else 0
+ltv = precio * frecuencia_compra
+drop_off = ((visitas - ventas) / visitas) * 100
 
-# Mostrar métricas clave
-st.subheader("📈 Métricas Clave")
+# -----------------------------
+# Proyecciones con crecimiento
+# -----------------------------
+meses = np.arange(1, meses_proyeccion + 1)
+proy_ventas = [ventas]
+proy_ingresos = [ingresos]
+proy_cpa = [cpa]
+
+for i in range(1, meses_proyeccion):
+    nueva_venta = proy_ventas[-1] * (1 + crecimiento_pct / 100)
+    proy_ventas.append(nueva_venta)
+    proy_ingresos.append(nueva_venta * precio)
+    proy_cpa.append(cpa)  # se mantiene constante, puedes ajustar si deseas
+
+# Bandas de incertidumbre (+/- 10%)
+ingresos_min = [x*0.9 for x in proy_ingresos]
+ingresos_max = [x*1.1 for x in proy_ingresos]
+
+# -----------------------------
+# Mostrar KPIs principales
+# -----------------------------
+st.subheader("📈 KPIs Clave")
 col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric("Tasa de Conversión", f"{tasa_conversion:.2f}%", delta=f"{tasa_conversion - 1:.2f}%")
-with col2:
-    st.metric("CPA", f"${cpa:.2f}", delta=f"${cpa - precio:.2f}")
-with col3:
-    st.metric("ROAS", f"{roas:.2f}x", delta=f"{roas - 1:.2f}x")
-with col4:
-    st.metric("Ventas Necesarias", f"{ventas_necesarias:.0f} ventas")
+col1.metric("Tasa de Conversión", f"{tasa_conversion:.2f}%")
+col2.metric("CPA", f"${cpa:.2f}")
+col3.metric("ROAS", f"{roas:.2f}x")
+col4.metric("Ventas Necesarias", f"{ventas_necesarias:.0f}")
 
-# Gráfico interactivo de ventas vs. ventas necesarias
+st.subheader("ℹ️ Otros KPIs")
+col5, col6 = st.columns(2)
+col5.metric("Lifetime Value (LTV)", f"${ltv:.2f}")
+col6.metric("Drop-off Rate", f"{drop_off:.2f}%")
+
+# -----------------------------
+# Gráfico profesional de proyección
+# -----------------------------
+st.subheader("📈 Proyección Profesional de KPIs")
 fig = go.Figure()
-fig.add_trace(go.Bar(x=["Ventas Actuales", "Ventas Necesarias"], y=[ventas, ventas_necesarias],
-                    marker_color=["blue", "orange"]))
-fig.update_layout(title="Comparación: Ventas Actuales vs. Ventas Necesarias",
-                  xaxis_title="Categoría", yaxis_title="Número de Ventas")
+
+# Curvas suavizadas usando spline
+fig.add_trace(go.Scatter(x=meses, y=proy_ingresos, mode='lines+markers', name='Ingresos Esperados', line=dict(color='green', width=3)))
+fig.add_trace(go.Scatter(x=meses, y=proy_ventas, mode='lines+markers', name='Ventas Esperadas', line=dict(color='blue', width=3)))
+fig.add_trace(go.Scatter(x=meses, y=proy_cpa, mode='lines+markers', name='CPA', line=dict(color='red', width=3, dash='dash')))
+
+# Bandas de incertidumbre
+fig.add_trace(go.Scatter(x=meses, y=ingresos_max, mode='lines', line=dict(width=0), showlegend=False))
+fig.add_trace(go.Scatter(x=meses, y=ingresos_min, mode='lines', fill='tonexty', fillcolor='rgba(0,255,0,0.2)', line=dict(width=0), name='Rango Ingresos'))
+
+fig.update_layout(title='Proyección de KPIs con Curvas Suavizadas y Rango de Incertidumbre',
+                  xaxis_title='Mes',
+                  yaxis_title='Valor',
+                  legend=dict(x=0, y=1.1, orientation='h'))
+
 st.plotly_chart(fig)
 
+# -----------------------------
 # Explicación de KPIs
-st.subheader("ℹ️ Explicación de cada KPI")
+# -----------------------------
+st.subheader("ℹ️ Explicación de Fórmulas")
 st.write("""
-- **Tasa de Conversión**: Mide el porcentaje de visitantes que realizan una compra. Fórmula: (Ventas / Visitas) * 100.
-- **CPA (Costo por Adquisición)**: Indica cuánto cuesta adquirir un cliente. Fórmula: Gasto en Ads / Ventas.
-- **ROAS (Retorno sobre Gasto en Ads)**: Mide la rentabilidad de tus campañas publicitarias. Fórmula: Ingresos / Gasto en Ads.
-- **Ventas Necesarias**: Número de ventas requeridas para cubrir los costos fijos. Fórmula: Costos Fijos / (Precio - Costos Variables).
+- **Tasa de Conversión**: Porcentaje de visitantes que compran `(Ventas / Visitas) * 100`
+- **CPA**: Costo por adquisición `Gasto en Ads / Ventas`
+- **ROAS**: Retorno sobre gasto en publicidad `Ingresos / Gasto en Ads`
+- **Ventas Necesarias**: Para cubrir costos fijos `Costos Fijos / (Precio - Costos Variables)`
+- **LTV**: Valor total de un cliente `Precio * Frecuencia de Compra`
+- **Drop-off Rate**: Porcentaje de visitantes que no compran `((Visitas - Ventas) / Visitas) * 100`
+- **Proyección de Ingresos y Ventas**: Se calcula mes a mes según crecimiento porcentual definido
 """)
+
+# -----------------------------
+# Chat AI Gratuito
+# -----------------------------
+st.subheader("💬 Pregunta a la AI sobre tus KPIs (Gratis)")
+
+pregunta = st.text_input("Escribe tu pregunta sobre tus KPIs:")
+
+if pregunta:
+    with st.spinner("La AI está respondiendo..."):
+        chat_model = pipeline("text-generation", model="bigscience/bloom-560m")
+        respuesta = chat_model(pregunta, max_length=200, do_sample=True)
+        st.write(respuesta[0]['generated_text'])
