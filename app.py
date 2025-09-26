@@ -1,55 +1,55 @@
 import streamlit as st
+import plotly.graph_objects as go
+import pandas as pd
 
-st.title("📊 Calculadora de KPIs de Marketing Digital")
+# Configuración de la página
+st.set_page_config(page_title="Dashboard de KPIs", page_icon="📊", layout="wide")
 
-st.write("Introduce tus datos y te mostraré tus KPIs con análisis y recomendaciones.")
+# Título de la aplicación
+st.title("📊 Dashboard Profesional de KPIs de Marketing Digital")
 
-# Inputs de usuario
-visitas = st.number_input("Número de visitas", min_value=1, value=10000)
-ventas = st.number_input("Número de ventas", min_value=0, value=100)
-gasto_ads = st.number_input("Gasto en publicidad ($)", min_value=0.0, value=500.0)
-precio = st.number_input("Precio del producto ($)", min_value=1.0, value=50.0)
-costos_fijos = st.number_input("Costos fijos mensuales ($)", min_value=0.0, value=1000.0)
-costos_variables = st.number_input("Costos variables por unidad ($)", min_value=0.0, value=10.0)
+# Entrada de datos
+st.sidebar.header("Parámetros de Entrada")
+visitas = st.sidebar.number_input("Número de visitas", min_value=1, value=10000)
+ventas = st.sidebar.number_input("Número de ventas", min_value=0, value=100)
+gasto_ads = st.sidebar.number_input("Gasto en publicidad ($)", min_value=0.0, value=500.0)
+precio = st.sidebar.number_input("Precio del producto ($)", min_value=1.0, value=50.0)
+costos_fijos = st.sidebar.number_input("Costos fijos mensuales ($)", min_value=0.0, value=1000.0)
+costos_variables = st.sidebar.number_input("Costos variables por unidad ($)", min_value=0.0, value=10.0)
 
-st.subheader("🔍 Resultados de tus KPIs")
-
-# 1. Tasa de conversión
+# Cálculos de KPIs
 tasa_conversion = (ventas / visitas) * 100
-st.write(f"**Tasa de conversión:** {tasa_conversion:.2f}%")
-if tasa_conversion < 1:
-    st.error("❌ Estás por debajo del promedio (1-3%). Revisa tu oferta o embudo.")
-elif tasa_conversion <= 3:
-    st.success("✅ Estás dentro del promedio (1-3%). Bien hecho.")
-else:
-    st.success("🚀 Excelente, tu tasa de conversión es muy alta.")
-
-# 2. CPA
 cpa = gasto_ads / ventas if ventas > 0 else 0
-st.write(f"**CPA (Costo por adquisición):** ${cpa:.2f}")
-if cpa >= precio:
-    st.error("❌ Tu CPA es igual o mayor que tu precio. Estás perdiendo dinero.")
-else:
-    st.success("✅ Tu CPA es rentable.")
-
-# 3. ROAS
 ingresos = ventas * precio
 roas = ingresos / gasto_ads if gasto_ads > 0 else 0
-st.write(f"**ROAS:** {roas:.2f}x")
-if roas < 1:
-    st.error("❌ Estás perdiendo dinero en tus anuncios.")
-elif roas < 3:
-    st.warning("⚠️ Rentable, pero se puede optimizar.")
-else:
-    st.success("🚀 Excelente ROAS, sigue escalando.")
-
-# 4. Punto de equilibrio
 margen_unitario = precio - costos_variables
 ventas_necesarias = costos_fijos / margen_unitario if margen_unitario > 0 else 0
-st.write(f"**Punto de equilibrio:** {ventas_necesarias:.0f} ventas necesarias")
-if ventas >= ventas_necesarias:
-    st.success("✅ Ya estás en punto de equilibrio o en ganancias.")
-else:
-    st.warning("⚠️ Aún no alcanzas el punto de equilibrio.")
 
-st.info("💡 Buena pregunta. Medir tus KPIs es fundamental para saber si avanzas hacia tu objetivo de vender productos digitales.")
+# Mostrar métricas clave
+st.subheader("📈 Métricas Clave")
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("Tasa de Conversión", f"{tasa_conversion:.2f}%", delta=f"{tasa_conversion - 1:.2f}%")
+with col2:
+    st.metric("CPA", f"${cpa:.2f}", delta=f"${cpa - precio:.2f}")
+with col3:
+    st.metric("ROAS", f"{roas:.2f}x", delta=f"{roas - 1:.2f}x")
+with col4:
+    st.metric("Ventas Necesarias", f"{ventas_necesarias:.0f} ventas")
+
+# Gráfico interactivo de ventas vs. ventas necesarias
+fig = go.Figure()
+fig.add_trace(go.Bar(x=["Ventas Actuales", "Ventas Necesarias"], y=[ventas, ventas_necesarias],
+                    marker_color=["blue", "orange"]))
+fig.update_layout(title="Comparación: Ventas Actuales vs. Ventas Necesarias",
+                  xaxis_title="Categoría", yaxis_title="Número de Ventas")
+st.plotly_chart(fig)
+
+# Explicación de KPIs
+st.subheader("ℹ️ Explicación de cada KPI")
+st.write("""
+- **Tasa de Conversión**: Mide el porcentaje de visitantes que realizan una compra. Fórmula: (Ventas / Visitas) * 100.
+- **CPA (Costo por Adquisición)**: Indica cuánto cuesta adquirir un cliente. Fórmula: Gasto en Ads / Ventas.
+- **ROAS (Retorno sobre Gasto en Ads)**: Mide la rentabilidad de tus campañas publicitarias. Fórmula: Ingresos / Gasto en Ads.
+- **Ventas Necesarias**: Número de ventas requeridas para cubrir los costos fijos. Fórmula: Costos Fijos / (Precio - Costos Variables).
+""")
