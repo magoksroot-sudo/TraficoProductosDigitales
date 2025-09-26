@@ -7,7 +7,7 @@ import requests
 # Configuración de página
 # -----------------------------
 st.set_page_config(page_title="Dashboard Profesional KPIs", layout="wide")
-st.title("📊 Dashboard Profesional de KPIs con Proyecciones y Chat AI")
+st.title("📊 Dashboard Profesional de KPIs con Proyecciones y Asistente AI Potente")
 
 # -----------------------------
 # Barra lateral: Inputs
@@ -99,7 +99,7 @@ st.write("""
 """)
 
 # -----------------------------
-# Chat AI con contexto usando Hugging Face Inference API
+# Chat AI potente con contexto resumido
 # -----------------------------
 st.subheader("💬 Pregunta a la AI sobre tus KPIs (contexto incluido)")
 
@@ -107,25 +107,28 @@ pregunta = st.text_input("Escribe tu pregunta sobre tus KPIs:")
 
 if pregunta:
     with st.spinner("La AI está respondiendo..."):
-        API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-small"
-        headers = {"Authorization": "Bearer TU_TOKEN_HUGGINGFACE"}  # reemplaza con tu token gratuito
+        API_URL = "https://api-inference.huggingface.co/models/bigscience/bloomz-560m"
+        headers = {"Authorization": "Bearer TU_TOKEN_HUGGINGFACE"}  # Reemplaza con tu token gratuito
 
+        # Resumir contexto para que no se confunda
         contexto = f"""
-        Visitas: {visitas}
-        Ventas: {ventas}
-        Gasto Ads: {gasto_ads}
-        Precio: {precio}
-        CPA: {cpa:.2f}
-        ROAS: {roas:.2f}x
-        LTV: {ltv:.2f}
-        Drop-off: {drop_off:.2f}%
-        Proyección {meses_proyeccion} meses con {crecimiento_pct}% mensual
+        KPIs:
+        - Tasa de Conversión: {tasa_conversion:.2f}%
+        - CPA: ${cpa:.2f}
+        - ROAS: {roas:.2f}x
+        - Ventas Necesarias: {ventas_necesarias:.0f}
+        - LTV: ${ltv:.2f}
+        - Drop-off: {drop_off:.2f}%
+        - Proyección: {meses_proyeccion} meses con {crecimiento_pct}% mensual
         """
 
         payload = {
-            "inputs": f"Estos son los KPIs: {contexto}\nUsuario pregunta: {pregunta}\nRespuesta experta:"
+            "inputs": f"Eres un asistente experto en marketing digital.\n{contexto}\nUsuario pregunta: {pregunta}\nRespuesta clara y profesional:"
         }
 
         response = requests.post(API_URL, headers=headers, json=payload)
         data = response.json()
-        st.write(data[0]['generated_text'])
+        if isinstance(data, list) and "generated_text" in data[0]:
+            st.write(data[0]['generated_text'])
+        else:
+            st.error("Error al generar respuesta. Intenta de nuevo.")
