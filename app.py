@@ -7,7 +7,7 @@ import requests
 # Configuración de página
 # -----------------------------
 st.set_page_config(page_title="Dashboard Profesional KPIs", layout="wide")
-st.title("📊 Dashboard Profesional de KPIs con Proyecciones y Asistente AI Potente")
+st.title("📊 Dashboard Profesional de KPIs con Proyecciones y AI Potente")
 
 # -----------------------------
 # Barra lateral: Inputs
@@ -49,7 +49,6 @@ for i in range(1, meses_proyeccion):
     proy_ingresos.append(nueva_venta * precio)
     proy_cpa.append(cpa)
 
-# Bandas de incertidumbre (+/-10%)
 ingresos_min = [x*0.9 for x in proy_ingresos]
 ingresos_max = [x*1.1 for x in proy_ingresos]
 
@@ -99,7 +98,7 @@ st.write("""
 """)
 
 # -----------------------------
-# Chat AI potente con contexto resumido
+# Chat AI potente (Qwen3-Omni-30B-A3B-Instruct) vía Hugging Face API
 # -----------------------------
 st.subheader("💬 Pregunta a la AI sobre tus KPIs (contexto incluido)")
 
@@ -107,10 +106,10 @@ pregunta = st.text_input("Escribe tu pregunta sobre tus KPIs:")
 
 if pregunta:
     with st.spinner("La AI está respondiendo..."):
-        API_URL = "https://api-inference.huggingface.co/models/bigscience/bloomz-560m"
-        headers = {"Authorization": "Bearer TU_TOKEN_HUGGINGFACE"}  # Reemplaza con tu token gratuito
+        API_URL = "https://api-inference.huggingface.co/models/Qwen/Qwen3-Omni-30B-A3B-Instruct"
+        headers = {"Authorization": "Bearer TU_TOKEN_HUGGINGFACE"}  # reemplaza con tu token gratuito
 
-        # Resumir contexto para que no se confunda
+        # Resumir contexto para evitar sobrecargar el modelo
         contexto = f"""
         KPIs:
         - Tasa de Conversión: {tasa_conversion:.2f}%
@@ -128,7 +127,8 @@ if pregunta:
 
         response = requests.post(API_URL, headers=headers, json=payload)
         data = response.json()
+
         if isinstance(data, list) and "generated_text" in data[0]:
             st.write(data[0]['generated_text'])
         else:
-            st.error("Error al generar respuesta. Intenta de nuevo.")
+            st.error("Error al generar respuesta. Verifica tu token y modelo.")
